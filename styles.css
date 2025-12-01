@@ -47,15 +47,16 @@ main {
   background: #303f9f;
 }
 
-/* Tabla de aportes */
-#tabla-aportes {
+#Tabla de aportes */
+/* Estilos compartidos para tabla de usuario y administrador */
+#tabla-aportes, #admin-tabla-aportes {
   width: 100%;
   border-collapse: collapse;
   background: #fff;
   box-shadow: 0 1px 3px rgba(0,0,0,0.08);
 }
 
-#tabla-aportes thead th {
+#tabla-aportes thead th, #admin-tabla-aportes thead th {
   background: #e8eaf6;
   color: #111;
   text-align: left;
@@ -64,18 +65,18 @@ main {
   border-bottom: 2px solid #d1d8e0;
 }
 
-#tabla-aportes tbody td {
+#tabla-aportes tbody td, #admin-tabla-aportes tbody td {
   padding: 0.6rem 0.75rem;
   border-bottom: 1px solid #f0f0f2;
   vertical-align: middle;
   font-size: 0.92rem;
 }
 
-#tabla-aportes tbody tr:nth-child(even) {
+#tabla-aportes tbody tr:nth-child(even), #admin-tabla-aportes tbody tr:nth-child(even) {
   background: #fafbff;
 }
 
-#tabla-aportes tbody tr:hover {
+#tabla-aportes tbody tr:hover, #admin-tabla-aportes tbody tr:hover {
   background: #f1f3ff;
 }
 
@@ -99,6 +100,59 @@ main {
 .btn-editar-aporte:hover {
   background: #303f9f;
 }
+
+.btn-eliminar-aporte {
+  padding: 0.35rem 0.65rem;
+  border: none;
+  border-radius: 4px;
+  background: #c62828;
+  color: #fff;
+  cursor: pointer;
+  margin-left: 0.4rem;
+}
+.btn-eliminar-aporte:hover { background: #b71c1c; }
+
+.btn-ver-reportes {
+  padding: 0.35rem 0.65rem;
+  border: none;
+  border-radius: 4px;
+  background: #607d8b;
+  color: #fff;
+  cursor: pointer;
+  margin-left: 0.4rem;
+}
+.btn-ver-reportes:hover { background: #455a64; }
+
+/* Botones admin (paralelos a user) */
+#admin-btn-mostrar-form-aporte {
+  padding: 0.5rem 1rem;
+  background: #3949ab;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+#admin-btn-mostrar-form-aporte:hover { background: #303f9f; }
+
+#admin-btn-aceptar-aporte {
+  padding: 0.45rem 1rem;
+  border-radius: 4px;
+  border: none;
+  background: #2e7d32;
+  color: #fff;
+  cursor: pointer;
+}
+#admin-btn-aceptar-aporte:hover { background: #1b5e20; }
+
+#admin-btn-eliminar-cancelar-aporte {
+  padding: 0.45rem 1rem;
+  border-radius: 4px;
+  border: none;
+  background: #c62828;
+  color: #fff;
+  cursor: pointer;
+}
+#admin-btn-eliminar-cancelar-aporte:hover { background: #b71c1c; }
 
 /* Modal */
 .modal-fondo {

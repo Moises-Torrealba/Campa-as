@@ -1,95 +1,185 @@
+// Controlador central que conecta el modelo (CL_mDecanato) con las vistas
+// (CL_vAportes para usuarios y CL_vDecanato para administradores).
+// - Recibe `initialData` para poblar el modelo (útil para persistencia)
+// - Recibe `onChange` callback que se invoca cada vez que la lista cambia
+//   (esto permite que la lógica de persistencia viva fuera del controlador).
 import CL_mDecanato  from "./CL_mDecanato.js";
 import CL_vDecanato  from "./CL_vDecanato.js";
+import { CL_vAportes } from "./CL_vAportes.js";
 import { DATA_APORTES_INICIAL } from "./data.js";
 import { CL_mAporte } from "./CL_mAporte.js";
 
 export class Controlador {
 
   private decanato: CL_mDecanato;
-  private vista: CL_vDecanato;
+  private vistaAdmin?: CL_vDecanato;
+  private vistaUser?: CL_vAportes;
   private onChange?: (aportes: CL_mAporte[]) => void;
 
+  private currentUserReportTarget?: number;
+  private currentAdminEditingId?: number;
+
   constructor(initialData?: CL_mAporte[], onChange?: (aportes: CL_mAporte[]) => void) {
-    // Recibir datos iniciales desde afuera (index.ts) y un callback para persistir cambios
     this.onChange = onChange;
     this.decanato = new CL_mDecanato(initialData ?? DATA_APORTES_INICIAL);
-    this.vista = new CL_vDecanato();
+    // Intento instanciar las vistas. En algunos entornos una vista puede
+    // no existir (por ejemplo sólo se muestra la vista user o admin), por
+    // eso se encapsula en try/catch para no romper la inicialización.
+    try { this.vistaUser = new CL_vAportes(""); } catch (e) { /* no existe vista user */ }
+    try { this.vistaAdmin = new CL_vDecanato("admin-"); } catch (e) { /* no existe vista admin */ }
+
+    // Configuro listeners y reduzco a una llamada para renderizar la UI
     this.setupEventListeners();
     this.updateUI();
   }
 
   private setupEventListeners(): void {
-    this.vista.btnMostrarForm.addEventListener("click", () => {
-      this.vista.abrirModal(true);
-    });
+    if (this.vistaUser) {
+      // --- Listeners / acciones disponibles para la vista de usuario ---
+      // Añadir aporte (usuario)
+      this.vistaUser.btnMostrarForm.addEventListener("click", () => this.vistaUser!.abrirModal(true));
+      this.vistaUser.btnAceptar.addEventListener("click", (e) => {
+        e.preventDefault();
+        const nuevo = this.vistaUser!.obtenerDatosDeInputs();
+        if (!nuevo) { alert("Completa los campos requeridos"); return; }
+        // Intentar registrar; si el id ya existe se informa y no se registra
+        const ok = this.decanato.registrarAporte(nuevo);
+        if (!ok) { alert("El ID ya existe. Elige otro ID."); return; }
+        if (this.onChange) this.onChange(this.decanato.obtenerTodos());
+        this.vistaUser!.cerrarModal();
+        this.updateUI();
+      });
 
-    this.vista.btnAceptar.addEventListener("click", (e) => {
-      e.preventDefault();
-      this.handleAceptar();
-    });
+      // Cancelar/ cerrar modal de añadir aporte (usuario)
+      this.vistaUser.btnCerrarModal.addEventListener("click", (e) => {
+        e.preventDefault();
+        this.vistaUser!.cerrarModal();
+      });
 
-    this.vista.btnEliminarCancelar.addEventListener("click", (e) => {
-      e.preventDefault();
-      this.handleEliminarCancelar();
-    });
-
-    this.vista.contenedorLista.addEventListener("click", (e) => {
-      const target = e.target as HTMLElement;
-      if (target && target.classList.contains("btn-editar-aporte")) {
-        const idStr = target.getAttribute("data-id");
-        if (idStr) {
-          this.handleEditar(parseInt(idStr));
+      // Reportes (usuario): abrir panel para redactar reporte sobre un aporte
+      this.vistaUser.contenedorLista.addEventListener("click", (e) => {
+        const target = e.target as HTMLElement;
+        if (target && target.classList.contains("btn-reportar-aporte")) {
+          const idStr = target.getAttribute("data-id");
+          if (idStr) {
+            const id = parseInt(idStr);
+            this.currentUserReportTarget = id;
+            this.vistaUser!.abrirPanelReporte(id);
+          }
         }
-      }
-    });
+      });
 
-    // Filtros
-    this.vista.filtroTipoDonador.addEventListener("change", () => {
-      this.updateUI();
-    });
+      // Envío de reporte: añade el reporte al modelo y persiste mediante onChange
+      this.vistaUser.btnEnviarReporte.addEventListener("click", () => {
+        const text = this.vistaUser!.inpReporte.value.trim();
+        if (!text || this.currentUserReportTarget == null) return;
+        this.decanato.agregarReporte(this.currentUserReportTarget, { fecha: new Date().toISOString(), texto: text });
+        if (this.onChange) this.onChange(this.decanato.obtenerTodos());
+        this.vistaUser!.cerrarPanelReporte();
+        this.updateUI();
+      });
 
-    this.vista.filtroMontoMin.addEventListener("input", () => {
-      this.updateUI();
-    });
-  }
+      this.vistaUser.btnCancelarReporte.addEventListener("click", () => {
+        this.vistaUser!.cerrarPanelReporte();
+      });
 
-  private handleAceptar(): void {
-    const nuevoAp = this.vista.obtenerDatosDeInputs();
-    if (nuevoAp === null) {
-      alert("Error: completa todos los campos requeridos.");
-      return;
+      // Filtros usuario: desencadenan re-renderizado de la lista
+      this.vistaUser.filtroTipoDonador.addEventListener("change", () => this.updateUI());
+      this.vistaUser.filtroMontoMin.addEventListener("input", () => this.updateUI());
     }
 
-    this.decanato.registrarAporte(nuevoAp);
-    // Notificar cambios (index.ts gestiona la persistencia)
+    if (this.vistaAdmin) {
+      // --- Listeners / acciones disponibles para la vista de administrador ---
+      // En la vista admin hay botones para crear, editar, eliminar y ver reportes
+      this.vistaAdmin.btnMostrarForm.addEventListener("click", () => { this.currentAdminEditingId = undefined; this.vistaAdmin!.abrirModal(true); });
+      this.vistaAdmin.btnAceptar.addEventListener("click", (e) => { e.preventDefault(); this.handleAdminAceptar(); });
+      this.vistaAdmin.btnEliminarCancelar.addEventListener("click", (e) => { e.preventDefault(); this.handleAdminEliminarCancelar(); });
+
+      // Handler central para clicks sobre la tabla admin (delegación)
+      this.vistaAdmin.contenedorLista.addEventListener("click", (e) => {
+        const target = e.target as HTMLElement;
+        if (!target) return;
+        const idStr = target.getAttribute("data-id");
+        if (!idStr) return;
+        const id = parseInt(idStr);
+        if (target.classList.contains("btn-editar-aporte")) {
+          // Editar: cargar datos en el modal para que el admin modifique
+          this.handleEditarAdmin(id);
+        } else if (target.classList.contains("btn-eliminar-aporte")) {
+          // Pedir confirmación al usuario antes de eliminar
+          const confirmDelete = confirm("¿Seguro que quieres eliminar?");
+          if (confirmDelete) {
+            this.decanato.eliminarAporte(id);
+            if (this.onChange) this.onChange(this.decanato.obtenerTodos());
+            this.updateUI();
+          } else {
+            // Usuario canceló la acción: no hacer nada
+          }
+        } else if (target.classList.contains("btn-ver-reportes")) {
+          const reportes = this.decanato.obtenerReportes(id);
+          // renderizar en listaReportes
+          this.vistaAdmin!.lblReporteSobre.textContent = id.toString().padStart(3, "0");
+          this.vistaAdmin!.listaReportes.innerHTML = reportes.map(r => `<div class=\"rep\"><small>${r.fecha}</small><div>${r.texto}</div></div>`).join("");
+          // Mostrar panel con reportes para el registro seleccionado
+          this.vistaAdmin!.panelReporte.classList.remove("hidden");
+        }
+      });
+
+      this.vistaAdmin.btnCerrarReporte.addEventListener("click", () => {
+        this.vistaAdmin!.panelReporte.classList.add("hidden");
+      });
+
+      // Filtros admin: igual comportamiento que en la vista user
+      this.vistaAdmin.filtroTipoDonador.addEventListener("change", () => this.updateUI());
+      this.vistaAdmin.filtroMontoMin.addEventListener("input", () => this.updateUI());
+    }
+  }
+
+  private handleAdminAceptar(): void {
+    if (!this.vistaAdmin) return;
+    const nuevoAp = this.vistaAdmin.obtenerDatosDeInputs();
+    if (nuevoAp === null) { alert("Error: completa todos los campos requeridos."); return; }
+    // Si estamos en modo edición: permitimos cambiar el id usando el id original
+    if (this.vistaAdmin.modoEdicion) {
+      const originalId = this.currentAdminEditingId ?? nuevoAp.id;
+      const ok = this.decanato.actualizarAporteConId(originalId, nuevoAp);
+      if (!ok) { alert("Error: ID duplicado o aporte original no encontrado."); return; }
+      this.currentAdminEditingId = undefined;
+    } else {
+      const ok = this.decanato.registrarAporte(nuevoAp);
+      if (!ok) { alert("El ID ya existe. Elige otro ID."); return; }
+    }
     if (this.onChange) this.onChange(this.decanato.obtenerTodos());
-    this.vista.cerrarModal();
+    this.vistaAdmin.cerrarModal();
     this.updateUI();
   }
 
-  private handleEliminarCancelar(): void {
-    if (this.vista.modoEdicion) {
-      const id = parseInt(this.vista.inpId.value);
-      this.decanato.eliminarAporte(id);
-      if (this.onChange) this.onChange(this.decanato.obtenerTodos());
-      alert(`Aporte con id ${id} eliminado.`);
-    }
-    this.vista.cerrarModal();
+  private handleAdminEliminarCancelar(): void {
+    if (!this.vistaAdmin) return;
+    // Nota de comportamiento: en edición el botón actúa como "Cancelar" y
+    // limpia los inputs; la eliminación se realiza desde el botón de la fila
+    // para evitar borrados accidentales.
+    this.vistaAdmin.limpiarInputs();
+    this.vistaAdmin.cerrarModal();
+    this.currentAdminEditingId = undefined;
     this.updateUI();
   }
 
-  private handleEditar(id: number): void {
+  private handleEditarAdmin(id: number): void {
     const ap = this.decanato.buscarPorId(id);
-    if (ap) {
-      this.vista.cargarDatosEnInputs(ap);
+    if (ap && this.vistaAdmin) {
+      // Guardar el id original para manejar cambios de id en la edición
+      this.currentAdminEditingId = id;
+      this.vistaAdmin.cargarDatosEnInputs(ap);
     }
   }
 
   private updateUI(): void {
     const todos = this.decanato.obtenerTodos();
 
-    const tipoFiltro = this.vista.filtroTipoDonador.value;      // "Todos", "Natural", "Jurídico"
-    const montoMinStr = this.vista.filtroMontoMin.value;
+    // Preferir filtros del usuario si existe, si no usar los del admin
+    const tipoFiltro = (this.vistaUser ? this.vistaUser.filtroTipoDonador.value : (this.vistaAdmin ? this.vistaAdmin.filtroTipoDonador.value : "Todos"));
+    const montoMinStr = (this.vistaUser ? this.vistaUser.filtroMontoMin.value : (this.vistaAdmin ? this.vistaAdmin.filtroMontoMin.value : ""));
 
     let montoMin: number | null = null;
     if (montoMinStr.trim() !== "") {
@@ -99,18 +189,24 @@ export class Controlador {
       }
     }
 
+    // Copia de la lista que luego irá filtrada según criterios seleccionados
     let filtrados = todos;
 
+    // Filtrar por tipo de aportante si aplica
     if (tipoFiltro !== "Todos") {
       filtrados = filtrados.filter(ap => ap.tipoAportante === tipoFiltro);
     }
 
+    // Filtrar por monto mínimo si el usuario/ admin lo indicó
     if (montoMin !== null) {
       const min = montoMin;
       filtrados = filtrados.filter(ap => ap.montoAporte >= min);
     }
 
+    // Envío los datos filtrados a ambas vistas (si existen). Cada vista
+    // sabe cómo presentar y qué controles mostrar/ocultar.
     const total = filtrados.length;
-    this.vista.actualizarLista(filtrados, total);
+    if (this.vistaUser) this.vistaUser.actualizarLista(filtrados, total);
+    if (this.vistaAdmin) this.vistaAdmin.actualizarLista(filtrados, total);
   }
 }

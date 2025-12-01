@@ -1,26 +1,47 @@
 import { CL_mAporte } from "./CL_mAporte.js";
+// Vista del decanato / administrador. Provee métodos para:
+// - obtener elementos del DOM (con prefijo opcional)
+// - abrir/cerrar modal de edición/creación
+// - limpiar inputs y cargar datos para edición
+// - renderizar la tabla con botones de editar/eliminar/ver reportes
 export default class CL_vDecanato {
-    constructor() {
-        this.lblTotal = document.getElementById("lbl-total-aportes");
-        this.contenedorLista = document.getElementById("lista-aportes");
-        this.modal = document.getElementById("modal-aporte");
-        // Inputs del formulario
-        this.inpId = document.getElementById("inp-id");
-        this.inpFechaAporte = document.getElementById("inp-fecha-aporte");
-        this.inpTipoAporte = document.getElementById("inp-tipo-aporte");
-        this.inpDescripcion = document.getElementById("inp-descripcion");
-        this.inpMontoAporte = document.getElementById("inp-monto-aporte");
-        this.inpNombreAporte = document.getElementById("inp-nombre-aporte");
-        this.inpTipoAportante = document.getElementById("inp-tipo-aportante");
-        // Botones principales
-        this.btnMostrarForm = document.getElementById("btn-mostrar-form-aporte");
-        this.btnAceptar = document.getElementById("btn-aceptar-aporte");
-        this.btnEliminarCancelar = document.getElementById("btn-eliminar-cancelar-aporte");
-        // Filtros
-        this.filtroTipoDonador = document.getElementById("filtro-tipo-donador");
-        this.filtroMontoMin = document.getElementById("filtro-monto-min");
+    constructor(prefix = "") {
         this.modoEdicion = false;
+        this.prefix = prefix;
     }
+    // Helper que lanza si no encuentra el elemento (ayuda en debugging)
+    getEl(id) {
+        const el = document.getElementById(this.prefix + id);
+        if (!el)
+            throw new Error(`Elemento no encontrado: ${this.prefix}${id}`);
+        return el;
+    }
+    // Getters para elementos usados por el controlador
+    get lblTotal() { return this.getEl("lbl-total-aportes"); }
+    get contenedorLista() { return this.getEl("lista-aportes"); }
+    get modal() { return this.getEl("modal-aporte"); }
+    // Inputs del formulario
+    get inpId() { return this.getEl("inp-id"); }
+    get inpFechaAporte() { return this.getEl("inp-fecha-aporte"); }
+    get inpTipoAporte() { return this.getEl("inp-tipo-aporte"); }
+    get inpDescripcion() { return this.getEl("inp-descripcion"); }
+    get inpMontoAporte() { return this.getEl("inp-monto-aporte"); }
+    get inpNombreAporte() { return this.getEl("inp-nombre-aporte"); }
+    get inpTipoAportante() { return this.getEl("inp-tipo-aportante"); }
+    // Botones principales
+    get btnMostrarForm() { return this.getEl("btn-mostrar-form-aporte"); }
+    get btnAceptar() { return this.getEl("btn-aceptar-aporte"); }
+    get btnEliminarCancelar() { return this.getEl("btn-eliminar-cancelar-aporte"); }
+    // Filtros
+    get filtroTipoDonador() { return this.getEl("filtro-tipo-donador"); }
+    get filtroMontoMin() { return this.getEl("filtro-monto-min"); }
+    // Panel de reportes (para vista admin)
+    get panelReporte() { return this.getEl("panel-reporte"); }
+    get lblReporteSobre() { return this.getEl("lbl-reporte-sobre"); }
+    get listaReportes() { return this.getEl("lista-reportes"); }
+    get btnCerrarReporte() { return this.getEl("btn-cerrar-reporte"); }
+    // Abrir modal de creación/edición. Si limpiar=true resetea campos y
+    // pone el id habilitado (modo creación).
     abrirModal(limpiar = true) {
         this.modal.classList.remove("hidden");
         if (limpiar) {
@@ -29,13 +50,11 @@ export default class CL_vDecanato {
             this.modoEdicion = false;
             this.btnEliminarCancelar.textContent = "✖ Cancelar";
         }
-        else {
-            this.btnEliminarCancelar.textContent = "✖ Eliminar";
-        }
     }
     cerrarModal() {
         this.modal.classList.add("hidden");
     }
+    // Limpia todos los campos del formulario
     limpiarInputs() {
         this.inpId.value = "";
         this.inpFechaAporte.value = "";
@@ -45,7 +64,7 @@ export default class CL_vDecanato {
         this.inpNombreAporte.value = "";
         this.inpTipoAportante.value = "";
     }
-    // Pinta la tabla con la data
+    // Pinta la tabla con la data (vista administrador: puede editar y ver reportes)
     actualizarLista(aportes, total) {
         this.lblTotal.textContent = total.toString();
         this.contenedorLista.innerHTML = "";
@@ -61,16 +80,19 @@ export default class CL_vDecanato {
         <td>${ap.tipoAportante}</td>
         <td>
           <button class="btn-editar-aporte" data-id="${ap.id}">Editar</button>
+          <button class="btn-eliminar-aporte" data-id="${ap.id}">Eliminar</button>
+          <button class="btn-ver-reportes" data-id="${ap.id}">Ver reportes</button>
         </td>
       `;
             this.contenedorLista.appendChild(tr);
         });
     }
+    // Cargar datos en el modal para editar un registro existente
     cargarDatosEnInputs(ap) {
         this.modoEdicion = true;
         this.abrirModal(false);
+        // Permitimos que el admin pueda editar el campo `id`.
         this.inpId.value = ap.id.toString();
-        this.inpId.disabled = true;
         this.inpFechaAporte.value = ap.fechaAporte;
         this.inpTipoAporte.value = ap.tipoAporte;
         this.inpDescripcion.value = ap.descripcion;
@@ -78,6 +100,7 @@ export default class CL_vDecanato {
         this.inpNombreAporte.value = ap.nombreAporte;
         this.inpTipoAportante.value = ap.tipoAportante;
     }
+    // Construye un CL_mAporte a partir de los inputs; valida campos básicos.
     obtenerDatosDeInputs() {
         const idNum = parseInt(this.inpId.value);
         const montoNum = parseFloat(this.inpMontoAporte.value);

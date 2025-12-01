@@ -1,31 +1,57 @@
 import { CL_mAporte, TipoAporte } from "./CL_mAporte.js";
 
+// Vista del decanato / administrador. Provee métodos para:
+// - obtener elementos del DOM (con prefijo opcional)
+// - abrir/cerrar modal de edición/creación
+// - limpiar inputs y cargar datos para edición
+// - renderizar la tabla con botones de editar/eliminar/ver reportes
 export default class CL_vDecanato {
+  private prefix: string;
 
-  public lblTotal = document.getElementById("lbl-total-aportes") as HTMLSpanElement;
-  public contenedorLista = document.getElementById("lista-aportes") as HTMLTableSectionElement;
-  public modal = document.getElementById("modal-aporte") as HTMLDivElement;
+  constructor(prefix: string = "") {
+    this.prefix = prefix;
+  }
+
+  // Helper que lanza si no encuentra el elemento (ayuda en debugging)
+  private getEl<T extends HTMLElement>(id: string): T {
+    const el = document.getElementById(this.prefix + id) as T | null;
+    if (!el) throw new Error(`Elemento no encontrado: ${this.prefix}${id}`);
+    return el;
+  }
+
+  // Getters para elementos usados por el controlador
+  public get lblTotal() { return this.getEl<HTMLSpanElement>("lbl-total-aportes"); }
+  public get contenedorLista() { return this.getEl<HTMLTableSectionElement>("lista-aportes"); }
+  public get modal() { return this.getEl<HTMLDivElement>("modal-aporte"); }
 
   // Inputs del formulario
-  public inpId = document.getElementById("inp-id") as HTMLInputElement;
-  public inpFechaAporte = document.getElementById("inp-fecha-aporte") as HTMLInputElement;
-  public inpTipoAporte = document.getElementById("inp-tipo-aporte") as HTMLSelectElement;
-  public inpDescripcion = document.getElementById("inp-descripcion") as HTMLInputElement;
-  public inpMontoAporte = document.getElementById("inp-monto-aporte") as HTMLInputElement;
-  public inpNombreAporte = document.getElementById("inp-nombre-aporte") as HTMLInputElement;
-  public inpTipoAportante = document.getElementById("inp-tipo-aportante") as HTMLInputElement;
+  public get inpId() { return this.getEl<HTMLInputElement>("inp-id"); }
+  public get inpFechaAporte() { return this.getEl<HTMLInputElement>("inp-fecha-aporte"); }
+  public get inpTipoAporte() { return this.getEl<HTMLSelectElement>("inp-tipo-aporte"); }
+  public get inpDescripcion() { return this.getEl<HTMLInputElement>("inp-descripcion"); }
+  public get inpMontoAporte() { return this.getEl<HTMLInputElement>("inp-monto-aporte"); }
+  public get inpNombreAporte() { return this.getEl<HTMLInputElement>("inp-nombre-aporte"); }
+  public get inpTipoAportante() { return this.getEl<HTMLInputElement>("inp-tipo-aportante"); }
 
   // Botones principales
-  public btnMostrarForm = document.getElementById("btn-mostrar-form-aporte") as HTMLButtonElement;
-  public btnAceptar = document.getElementById("btn-aceptar-aporte") as HTMLButtonElement;
-  public btnEliminarCancelar = document.getElementById("btn-eliminar-cancelar-aporte") as HTMLButtonElement;
+  public get btnMostrarForm() { return this.getEl<HTMLButtonElement>("btn-mostrar-form-aporte"); }
+  public get btnAceptar() { return this.getEl<HTMLButtonElement>("btn-aceptar-aporte"); }
+  public get btnEliminarCancelar() { return this.getEl<HTMLButtonElement>("btn-eliminar-cancelar-aporte"); }
 
   // Filtros
-  public filtroTipoDonador = document.getElementById("filtro-tipo-donador") as HTMLSelectElement;
-  public filtroMontoMin = document.getElementById("filtro-monto-min") as HTMLInputElement;
+  public get filtroTipoDonador() { return this.getEl<HTMLSelectElement>("filtro-tipo-donador"); }
+  public get filtroMontoMin() { return this.getEl<HTMLInputElement>("filtro-monto-min"); }
 
   public modoEdicion: boolean = false;
 
+  // Panel de reportes (para vista admin)
+  public get panelReporte() { return this.getEl<HTMLDivElement>("panel-reporte"); }
+  public get lblReporteSobre() { return this.getEl<HTMLSpanElement>("lbl-reporte-sobre"); }
+  public get listaReportes() { return this.getEl<HTMLDivElement>("lista-reportes"); }
+  public get btnCerrarReporte() { return this.getEl<HTMLButtonElement>("btn-cerrar-reporte"); }
+
+  // Abrir modal de creación/edición. Si limpiar=true resetea campos y
+  // pone el id habilitado (modo creación).
   public abrirModal(limpiar: boolean = true): void {
     this.modal.classList.remove("hidden");
     if (limpiar) {
@@ -33,8 +59,6 @@ export default class CL_vDecanato {
       this.inpId.disabled = false;
       this.modoEdicion = false;
       this.btnEliminarCancelar.textContent = "✖ Cancelar";
-    } else {
-      this.btnEliminarCancelar.textContent = "✖ Eliminar";
     }
   }
 
@@ -42,6 +66,7 @@ export default class CL_vDecanato {
     this.modal.classList.add("hidden");
   }
 
+  // Limpia todos los campos del formulario
   public limpiarInputs(): void {
     this.inpId.value = "";
     this.inpFechaAporte.value = "";
@@ -52,7 +77,7 @@ export default class CL_vDecanato {
     this.inpTipoAportante.value = "";
   }
 
-  // Pinta la tabla con la data
+  // Pinta la tabla con la data (vista administrador: puede editar y ver reportes)
   public actualizarLista(aportes: CL_mAporte[], total: number): void {
     this.lblTotal.textContent = total.toString();
     this.contenedorLista.innerHTML = "";
@@ -69,18 +94,21 @@ export default class CL_vDecanato {
         <td>${ap.tipoAportante}</td>
         <td>
           <button class="btn-editar-aporte" data-id="${ap.id}">Editar</button>
+          <button class="btn-eliminar-aporte" data-id="${ap.id}">Eliminar</button>
+          <button class="btn-ver-reportes" data-id="${ap.id}">Ver reportes</button>
         </td>
       `;
       this.contenedorLista.appendChild(tr);
     });
   }
 
+  // Cargar datos en el modal para editar un registro existente
   public cargarDatosEnInputs(ap: CL_mAporte): void {
     this.modoEdicion = true;
     this.abrirModal(false);
 
+    // Permitimos que el admin pueda editar el campo `id`.
     this.inpId.value = ap.id.toString();
-    this.inpId.disabled = true;
     this.inpFechaAporte.value = ap.fechaAporte;
     this.inpTipoAporte.value = ap.tipoAporte;
     this.inpDescripcion.value = ap.descripcion;
@@ -89,6 +117,7 @@ export default class CL_vDecanato {
     this.inpTipoAportante.value = ap.tipoAportante;
   }
 
+  // Construye un CL_mAporte a partir de los inputs; valida campos básicos.
   public obtenerDatosDeInputs(): CL_mAporte | null {
     const idNum = parseInt(this.inpId.value);
     const montoNum = parseFloat(this.inpMontoAporte.value);

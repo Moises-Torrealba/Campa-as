@@ -1,4 +1,6 @@
 import { CL_mAporte } from "./CL_mAporte.js";
+// Datos iniciales de ejemplo que usa la aplicación cuando no hay persistencia.
+// Pueden servir como seed para desarrollo y pruebas.
 export const DATA_APORTES_INICIAL = [
     new CL_mAporte(1, "2025-11-10", "Efectivo", "Aporte para campaña de becas estudiantiles.", 250.0, "María González", "Natural"),
     new CL_mAporte(2, "2025-11-12", "Especie", "Donación de equipos de laboratorio para sala de cómputo.", 0.0, "Tecnología Andina C.A.", "Jurídico"),
