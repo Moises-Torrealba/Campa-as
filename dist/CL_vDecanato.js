@@ -1,5 +1,5 @@
 import { CL_mAporte } from "./CL_mAporte.js";
-export class CL_vDecanato {
+export default class CL_vDecanato {
     constructor() {
         this.lblTotal = document.getElementById("lbl-total-aportes");
         this.contenedorLista = document.getElementById("lista-aportes");

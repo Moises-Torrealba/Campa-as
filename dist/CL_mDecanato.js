@@ -1,4 +1,4 @@
-export class CL_mDecanato {
+export default class CL_mDecanato {
     constructor(datosIniciales = []) {
         this.listaAportes = [];
         this.listaAportes = datosIniciales;

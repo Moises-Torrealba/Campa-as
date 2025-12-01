@@ -1,6 +1,6 @@
 import { CL_mAporte, TipoAporte } from "./CL_mAporte.js";
 
-export class CL_vDecanato {
+export default class CL_vDecanato {
 
   public lblTotal = document.getElementById("lbl-total-aportes") as HTMLSpanElement;
   public contenedorLista = document.getElementById("lista-aportes") as HTMLTableSectionElement;

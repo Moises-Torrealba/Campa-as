@@ -1,6 +1,6 @@
 import { CL_mAporte } from "./CL_mAporte.js";
 
-export class CL_mDecanato {
+export default class CL_mDecanato {
 
   private listaAportes: CL_mAporte[] = [];
 

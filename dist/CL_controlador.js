@@ -1,9 +1,11 @@
-import { CL_mDecanato } from "./CL_mDecanato.js";
-import { CL_vDecanato } from "./CL_vDecanato.js";
+import CL_mDecanato from "./CL_mDecanato.js";
+import CL_vDecanato from "./CL_vDecanato.js";
 import { DATA_APORTES_INICIAL } from "./data.js";
 export class Controlador {
-    constructor() {
-        this.decanato = new CL_mDecanato(DATA_APORTES_INICIAL);
+    constructor(initialData, onChange) {
+        // Recibir datos iniciales desde afuera (index.ts) y un callback para persistir cambios
+        this.onChange = onChange;
+        this.decanato = new CL_mDecanato(initialData !== null && initialData !== void 0 ? initialData : DATA_APORTES_INICIAL);
         this.vista = new CL_vDecanato();
         this.setupEventListeners();
         this.updateUI();
@@ -44,6 +46,9 @@ export class Controlador {
             return;
         }
         this.decanato.registrarAporte(nuevoAp);
+        // Notificar cambios (index.ts gestiona la persistencia)
+        if (this.onChange)
+            this.onChange(this.decanato.obtenerTodos());
         this.vista.cerrarModal();
         this.updateUI();
     }
@@ -51,6 +56,8 @@ export class Controlador {
         if (this.vista.modoEdicion) {
             const id = parseInt(this.vista.inpId.value);
             this.decanato.eliminarAporte(id);
+            if (this.onChange)
+                this.onChange(this.decanato.obtenerTodos());
             alert(`Aporte con id ${id} eliminado.`);
         }
         this.vista.cerrarModal();
@@ -78,7 +85,8 @@ export class Controlador {
             filtrados = filtrados.filter(ap => ap.tipoAportante === tipoFiltro);
         }
         if (montoMin !== null) {
-            filtrados = filtrados.filter(ap => ap.montoAporte >= montoMin);
+            const min = montoMin;
+            filtrados = filtrados.filter(ap => ap.montoAporte >= min);
         }
         const total = filtrados.length;
         this.vista.actualizarLista(filtrados, total);

@@ -1,6 +1,6 @@
 export type TipoAporte = "Efectivo" | "Especie";
 
-export class CL_mAporte {
+export  class CL_mAporte {
   constructor(
     public id: number,              // número de aporte
     public fechaAporte: string,     // fecha
