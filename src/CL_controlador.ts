@@ -177,9 +177,23 @@ export class Controlador {
   private updateUI(): void {
     const todos = this.decanato.obtenerTodos();
 
-    // Preferir filtros del usuario si existe, si no usar los del admin
-    const tipoFiltro = (this.vistaUser ? this.vistaUser.filtroTipoDonador.value : (this.vistaAdmin ? this.vistaAdmin.filtroTipoDonador.value : "Todos"));
-    const montoMinStr = (this.vistaUser ? this.vistaUser.filtroMontoMin.value : (this.vistaAdmin ? this.vistaAdmin.filtroMontoMin.value : ""));
+    // Seleccionar filtros según la vista actualmente visible (user vs admin).
+    // Antes se elegía `vistaUser` simplemente por existir, lo que ignoraba
+    // los filtros del admin cuando ambos views estaban instanciados.
+    let tipoFiltro = "Todos";
+    let montoMinStr = "";
+    const adminSection = document.getElementById("admin-section");
+    const userSection = document.getElementById("user-section");
+    const adminVisible = adminSection ? !adminSection.classList.contains("hidden") : false;
+    const userVisible = userSection ? !userSection.classList.contains("hidden") : false;
+
+    if (adminVisible && this.vistaAdmin) {
+      tipoFiltro = this.vistaAdmin.filtroTipoDonador.value;
+      montoMinStr = this.vistaAdmin.filtroMontoMin.value;
+    } else if (userVisible && this.vistaUser) {
+      tipoFiltro = this.vistaUser.filtroTipoDonador.value;
+      montoMinStr = this.vistaUser.filtroMontoMin.value;
+    }
 
     let montoMin: number | null = null;
     if (montoMinStr.trim() !== "") {
